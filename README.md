@@ -1,14 +1,19 @@
 # Alpha-Transformer
-Alpha Zero equipped Transformer with various techniques for speedup
+Alpha Zero equipped with Transformer with various novel techniques for speedup in tree search
 
 About
 =====
 
-Alpha Transformer, or AT, is an algorithm and implementation of Alpha Zero based on Transformer with various speedup techniques to solve sequential decision problems effectively with minimal computation resources. For the details, please refer to the paper. 
+Alpha Transformer, or AT, is an algorithm and implementation of Alpha Zero based on Transformer with various novel speedup techniques applicable to tree search. It can solve sequential decision problems effectively with minimal computation resources. For the details, please refer to the paper. 
 
 Though AlphaZero required 5000 TPUs for game generation, the FLOPS for a single move in my case is smaller than that of AZ by the order of 1000. 
 
-Hidden states are stored in each already evaluated node of tree, thus avoiding redundancy of inference. 
+Contribution of This Project includes:
+
+1. The state-of-the-art performance in the benchmark with a single GPU...
+2. To devise a method in which hidden states are stored in each already evaluated node of tree, thus avoiding redundancy of inference, and organized in a way such that the GPU memory consumption is minimized.
+3. To devise a method that significantly saves the computational cost and GPU memory upon inference on tree. 
+
 
 This implementation was inspired from Alpha Zero at [reversi-alpha-zero](https://github.com/mokemokechicken/reversi-alpha-zero) by [mokemokechiken](https://github.com/mokemokechicken/). Transformer part is based on [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor). The part responsible for text generation task proper is based on [LeakGAN](https://github.com/CR-Gjx/LeakGAN/). LSTM part is based on [Google-Neural-Machine-Translation-GNMT](https://github.com/shawnxu1318/Google-Neural-Machine-Translation-GNMT). One can refer to these links for details of my implementation in respective components. 
 
