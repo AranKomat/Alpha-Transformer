@@ -9,11 +9,27 @@ Alpha Transformer, or AT, is an algorithm and implementation of Alpha Zero based
 
 It can solve sequential decision problems effectively with minimal computation resources. Our implementation is for single-agent tasks only; however, one can easily modify our implementation to convert it to two-agent version as in the original Alpha Zero. For this and more detailed comments on our implementation of Alpha Zero, please refer to [reversi-alpha-zero](https://github.com/mokemokechicken/reversi-alpha-zero) by [mokemokechiken](https://github.com/mokemokechicken/), which inspired our implementation of Alpha Zero. 
 
+Let D, L and N to be the hidden dimension, episode length and the number of simulations per move and  , respectively. 
+
 The contribution of this project includes:
 
 1. ... performance in the benchmark with a single GPU ...
-2. To devise a method in which hidden states are stored in each already evaluated node of tree, thus avoiding redundancy of inference, and organized in a way such that the GPU memory consumption is minimized.
-3. To devise a method that significantly reduces the computational cost and GPU memory upon inference on tree with Transformer. 
+
+2. To devise a method in which hidden states (caches) are stored in each already evaluated node of tree, thus avoiding redundancy of inference, and organized in a way such that the GPU memory consumption and CPU-GPU transfer are minimized. 
+
+The sequential decision problem of our interest can be represented as a string of actions as in the setting of Alpha Zero. Naively using a CNN or Transformer to evaluate on the entire string at each timestep costs quadratically to the episode length. If we employ either RNN or Transformer with caches stored in each already evaluated node, the cost can be reduced to linear w.r.t. the episode length. 
+
+CPU-GPU transfer in both directions becomes a bottleneck due to the nature of our algorithm. This was circumvented by the use of PyTorch and a sophisticated management of stored caches. In the case of Tensorflow, the standard procedure transfers the input to GPU and then back to CPU. In the case of PyTorch, it straightforward to always keep the caches on GPU, avoiding the unnecessary transfer. Furthermore, what is transferred between the server and the clients is not the caches themselves but the string representation of each state. This allows the caches to be always stored in the server and hence avoids a large transfer throughput. Since each client does not store the caches overlapped with the ones stored by other clients, it also reduces the GPU memory consumption. Each stored cache is segmented timestep-wise, and each overlapping segmented cache is discarded for further saving.  
+
+3. To devise a method that significantly reduces the computational cost and GPU memory consumption in matrix multiplications in self-attention upon inference on tree with Transformer. 
+
+The method exploits the tendency that there is a significant overlap between the cache of each tree node, and the overlapped caches can be replaced with a single cache. To achieve this in inference, a dynamic modification of mask of attention is devised. Note that the method does not reduce the cost due to evauation of Q, V and K from the previous hidden state with linear layer, which is not a bottleneck in our setting.   
+
+This reduces the memory consumption of a single root state evaluation, consisting of evaluating hundreds of the child nodes, from O(DLN) to O((L+D)N). The difference is so large that, even on a GPU with large enough memory to afford O(DLN), the total speed differs by the factor of five on a toy problem. 
+
+4. To offer an implementation with various miscellaneous hacks to reduce the I/O and CPU computation cost.  
+
+There are various hacks used in our implementation to reduce the I/O and CPU computation cost, which also become a bottleneck in achieving the speedup we gained. For example, the size of `/buffer` quickly grows to the order of GB. The maximum size of `/buffer` can be calculated as 8 x `config.buffer_size` x LN bytes. This does not depend on the number of possible actions but instead on a usually smaller N, since we store the visit counts not as a distribution. Also, the use of h5py is essential to the speed. Reading the rows of the previous visit counts becomes a bottleneck, but this was circumvented by reading the small chuncks iteratively instead of reading a large chunck at once. The use of PyTorch is also essential for quickly updating the model weights. With Tensorflow, one has to destroy the existing graph before updating weights, which makes the process significantly longer. The calculation of Dirichlet distribution was a CPU bottleneck, which was resolved by our approximation precise enough for practical use. 
 
 
 Some possible future directions include to combine the methods introduced in the following papers:
